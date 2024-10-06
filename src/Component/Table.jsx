@@ -1,37 +1,19 @@
-import { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
-import { useFinancialRecords } from "../contexts/financial.context";
-import { format } from "date-fns";
-import FinancialServices from "../Services/financial.service";
+import { useFinancialRecords } from "../contexts/financial.context"; // นำเข้า context
 
 function Table() {
-  const [records, setRecords] = useState([]);
   const navigate = useNavigate(); // ใช้สำหรับการนำทาง
   const { user } = useUser(); // ดึงข้อมูลของผู้ใช้ที่ล็อกอิน
+  const { records, fetchRecords, deleteRecord } = useFinancialRecords(); // ใช้ context
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (user) {
-          const response =
-            await FinancialServices.getAllFinancialRecordsByUserId(user.id);
-          if (Array.isArray(response.data)) {
-            setRecords(response.data);
-          } else {
-            console.error(
-              "Expected response.data to be an array but received:",
-              response
-            );
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    fetchData();
-  }, [user]);
+    if (user) {
+      fetchRecords(); // เรียกใช้ฟังก์ชัน fetchRecords จาก context
+    }
+  }, [user, fetchRecords]);
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
@@ -46,15 +28,8 @@ function Table() {
 
     if (result.isConfirmed) {
       try {
-        const response = await deleteRecord(id);
-        if (response.status === 200 || response.status === 204) {
-          Swal.fire("ลบแล้ว!", "เรคคอร์ดของคุณถูกลบแล้ว.", "success");
-          setRecords(records.filter((record) => record.id !== id));
-        } else {
-          throw new Error(
-            `ไม่สามารถลบเรคคอร์ดได้. รหัสสถานะ: ${response.status}`
-          );
-        }
+        await deleteRecord(id); // เรียกใช้ฟังก์ชัน deleteRecord จาก context
+        Swal.fire("ลบแล้ว!", "เรคคอร์ดของคุณถูกลบแล้ว.", "success");
       } catch (error) {
         console.error("ข้อผิดพลาด:", error);
         Swal.fire(
@@ -67,7 +42,7 @@ function Table() {
   };
 
   const handleEdit = (id) => {
-    navigate(`/edit/${id}`); // นำทางไปยังหน้าการแก้ไข
+    navigate(`/edit/${id}`); // นำทางไปยังหน้าที่แก้ไข
   };
 
   return (
@@ -75,32 +50,27 @@ function Table() {
       <table className="min-w-full bg-white divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              #
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Category
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Date
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Description
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Amount
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Payment Method
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
+            {[
+              "#",
+              "Category",
+              "Date",
+              "Description",
+              "Amount",
+              "Payment Method",
+              "Actions",
+            ].map((header, index) => (
+              <th
+                key={index}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                {header}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
           {records.map((record, index) => (
-            <tr key={record.id || index}>
+            <tr key={record.Id || index}>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {index + 1}
               </td>
@@ -121,13 +91,13 @@ function Table() {
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                 <button
-                  onClick={() => handleEdit(record.id)}
+                  onClick={() => handleEdit(record.Id)}
                   className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 mr-2"
                 >
                   Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(record.id)}
+                  onClick={() => handleDelete(record.Id)}
                   className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
                 >
                   Delete
@@ -136,29 +106,6 @@ function Table() {
             </tr>
           ))}
         </tbody>
-        <tfoot className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Category
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Date
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Description
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Amount
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Payment Method
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </tfoot>
       </table>
     </div>
   );

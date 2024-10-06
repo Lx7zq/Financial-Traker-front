@@ -15,9 +15,11 @@ export const FinancialRecordProvider = ({ children }) => {
       );
       if (response.status === 200) {
         setRecords(response.data);
+      } else {
+        console.error("Failed to fetch records:", response.status);
       }
     } catch (error) {
-      console.log(error);
+      console.error("Error fetching records:", error);
     }
   };
 
@@ -61,11 +63,15 @@ export const FinancialRecordProvider = ({ children }) => {
       );
       if (response.status === 200) {
         setRecords((prev) =>
-          prev.map((record) => (record.id === id ? newRecord : record))
+          prev.map((record) =>
+            record.id === id ? { ...record, ...newRecord } : record
+          )
         );
+      } else {
+        console.error("Failed to update record:", response.status);
       }
     } catch (error) {
-      console.log(error);
+      console.error("Error updating record:", error);
     }
   };
 
@@ -82,7 +88,13 @@ export const FinancialRecordProvider = ({ children }) => {
 
   return (
     <FinancialRecordContext.Provider
-      value={{ records, AddRecord, updateRecord, deleteRecord }}
+      value={{
+        fetchRecords,
+        records,
+        AddRecord,
+        updateRecord,
+        deleteRecord,
+      }}
     >
       {children}
     </FinancialRecordContext.Provider>

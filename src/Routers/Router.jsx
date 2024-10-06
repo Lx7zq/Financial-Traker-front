@@ -5,6 +5,7 @@ import Layout from "../Component/Layout";
 import Dashbord from "../Pages/Dashbord";
 import { FinancialRecordProvider } from "../contexts/financial.context";
 import EditRecord from "../Pages/Dashbord/EditRecordform";
+
 const router = createBrowserRouter([
   {
     path: "/",

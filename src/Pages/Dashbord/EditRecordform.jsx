@@ -1,82 +1,57 @@
-import { useState, useEffect } from "react";
-import Swal from "sweetalert2";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useFinancialRecords } from "../../contexts/financial.context"; // นำเข้าคอนเท็กซ์
+import { useFinancialRecords } from "../../contexts/financial.context";
 
 const EditRecord = () => {
   const { id } = useParams();
-  const { fetchRecords, updateRecord } = useFinancialRecords(); // รับฟังก์ชันจาก Context
-  const [financial, setFinancial] = useState({
-    category: "",
-    date: "",
-    description: "",
-    amount: "",
-    paymentMethod: "",
-  });
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { records, updateRecord } = useFinancialRecords();
+
+  if (!records || !updateRecord) {
+    console.error(
+      "Financial records or updateRecord function is not available"
+    );
+    return <div>Loading...</div>;
+  }
+
+  const [record, setRecord] = useState(null);
 
   useEffect(() => {
-    const loadRecord = async () => {
-      try {
-        const response = await fetchRecords(id); // เรียกใช้ฟังก์ชันจาก Context
-        if (response.status === 200) {
-          setFinancial(response.data);
-        } else {
-          throw new Error("Failed to fetch record");
-        }
-      } catch (error) {
-        console.error("Error fetching record:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Fetch Failed",
-          text: error.message,
-        });
-      } finally {
-        setLoading(false);
+    if (id && records.length > 0) {
+      const foundRecord = records.find((record) => record.Id === parseInt(id));
+      if (foundRecord) {
+        setRecord(foundRecord);
+      } else {
+        console.error("Record not found");
       }
-    };
-
-    loadRecord();
-  }, [id, fetchRecords]); // เพิ่ม `fetchRecord` ใน dependencies
-  //test
+    }
+  }, [id, records]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFinancial({ ...financial, [name]: value });
+    setRecord((prevRecord) => ({
+      ...prevRecord,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const updatedRecord = {
+      ...record,
+      amount: parseFloat(record.amount), // Ensure 'amount' is sent as a decimal
+      date: new Date(record.date).toISOString(), // Ensure date is formatted correctly
+    };
+
     try {
-      const response = await updateRecord(id, financial); // เรียกใช้ฟังก์ชันจาก Context
-      if (response.status === 200) {
-        Swal.fire({
-          title: "Record Updated",
-          text: response.data.message || "Record updated successfully",
-          icon: "success",
-        });
-        navigate("/");
-      } else {
-        throw new Error("Failed to update record");
-      }
+      await updateRecord(record.Id, updatedRecord);
+      navigate("/");
     } catch (error) {
       console.error("Error updating record:", error);
-      Swal.fire({
-        icon: "error",
-        title: "Update Failed",
-        text: error.response?.data?.message || error.message,
-      });
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-8 max-w-lg mx-auto bg-white shadow-md rounded-lg mt-20">
-        Loading...
-      </div>
-    );
-  }
+  if (!record) return <div>Loading...</div>;
 
   return (
     <div className="p-8 max-w-lg mx-auto bg-white shadow-md rounded-lg mt-20">
@@ -84,6 +59,7 @@ const EditRecord = () => {
         Edit Financial Record
       </h1>
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Category of Entry */}
         <div className="form-group">
           <label className="block text-gray-700 font-semibold mb-2">
             Category
@@ -91,7 +67,7 @@ const EditRecord = () => {
           <select
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             name="category"
-            value={financial.category || ""}
+            value={record.category}
             onChange={handleChange}
           >
             <option value="">Select Category</option>
@@ -100,17 +76,19 @@ const EditRecord = () => {
           </select>
         </div>
 
+        {/* Date */}
         <div className="form-group">
           <label className="block text-gray-700 font-semibold mb-2">Date</label>
           <input
             type="date"
             name="date"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={financial.date || ""}
+            value={record.date.slice(0, 10)}
             onChange={handleChange}
           />
         </div>
 
+        {/* Description */}
         <div className="form-group">
           <label className="block text-gray-700 font-semibold mb-2">
             Description
@@ -119,11 +97,12 @@ const EditRecord = () => {
             name="description"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter description"
-            value={financial.description || ""}
+            value={record.description}
             onChange={handleChange}
           />
         </div>
 
+        {/* Amount */}
         <div className="form-group">
           <label className="block text-gray-700 font-semibold mb-2">
             Amount
@@ -134,11 +113,12 @@ const EditRecord = () => {
             name="amount"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Enter amount"
-            value={financial.amount || ""}
+            value={record.amount}
             onChange={handleChange}
           />
         </div>
 
+        {/* Payment Method */}
         <div className="form-group">
           <label className="block text-gray-700 font-semibold mb-2">
             Payment Method
@@ -146,7 +126,7 @@ const EditRecord = () => {
           <select
             name="paymentMethod"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={financial.paymentMethod || ""}
+            value={record.paymentMethod}
             onChange={handleChange}
           >
             <option value="">Select Payment Method</option>
@@ -156,6 +136,7 @@ const EditRecord = () => {
           </select>
         </div>
 
+        {/* Submit Button */}
         <div className="form-group mt-6">
           <button
             type="submit"
